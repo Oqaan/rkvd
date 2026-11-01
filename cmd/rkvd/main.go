@@ -1,6 +1,8 @@
 package main
 
 import (
+	"errors"
+	"io"
 	"log"
 	"net"
 )
@@ -20,15 +22,20 @@ func main() {
 	defer conn.Close()
 
 	buf := make([]byte, 1024)
-	n, err := conn.Read(buf)
-	if err != nil {
-		log.Fatal(err)
-	}
-	log.Printf("%q", buf[:n])
+	for {
+		n, err := conn.Read(buf)
+		if errors.Is(err, io.EOF) {
+			log.Printf("client disconnected")
+			return
+		} else if err != nil {
+			log.Fatal(err)
+		}
+		log.Printf("%q", buf[:n])
 
-	// RESP simple string: "+" marks the type, "\r\n" ends the message
-	_, err = conn.Write([]byte("+PONG\r\n"))
-	if err != nil {
-		log.Fatal(err)
+		// RESP simple string: "+" marks the type, "\r\n" ends the message
+		_, err = conn.Write([]byte("+PONG\r\n"))
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 }
