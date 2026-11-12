@@ -20,25 +20,34 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
+		go handleConnection(conn)
+	}
+}
 
-		buf := make([]byte, 1024)
+func handleConnection(conn net.Conn) {
+	defer conn.Close()
 
-		for {
-			n, err := conn.Read(buf)
-			if errors.Is(err, io.EOF) {
-				log.Printf("client disconnected")
-				break
-			} else if err != nil {
-				log.Fatal(err)
-			}
-			log.Printf("%q", buf[:n])
+	addr := conn.RemoteAddr()
+	log.Printf("client connected: %s", addr)
 
-			// RESP simple string: "+" marks the type, "\r\n" ends the message
-			_, err = conn.Write([]byte("+PONG\r\n"))
-			if err != nil {
-				log.Fatal(err)
-			}
+	buf := make([]byte, 1024)
+
+	for {
+		n, err := conn.Read(buf)
+		if errors.Is(err, io.EOF) {
+			log.Printf("client disconnected: %s", addr)
+			break
+		} else if err != nil {
+			log.Printf("read from %s: %v", addr, err)
+			break
 		}
-		conn.Close()
+		log.Printf("received from %s: %q", addr, buf[:n])
+
+		// RESP simple string: "+" marks the type, "\r\n" ends the message
+		_, err = conn.Write([]byte("+PONG\r\n"))
+		if err != nil {
+			log.Printf("write to %s: %v", addr, err)
+			break
+		}
 	}
 }
